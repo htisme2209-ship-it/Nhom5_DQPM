@@ -1,0 +1,181 @@
+package com.danang.railway.controller;
+
+import com.danang.railway.dto.ApiResponse;
+import com.danang.railway.entity.*;
+import com.danang.railway.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+public class LichTrinhController {
+
+    private final LichTrinhRepository lichTrinhRepo;
+    private final ChuyenTauRepository chuyenTauRepo;
+    private final DuongRayRepository duongRayRepo;
+    private final TauRepository tauRepo;
+    private final NhatKyRepository nhatKyRepo;
+
+    @GetMapping("/lich-trinh")
+    public ResponseEntity<ApiResponse<List<LichTrinh>>> getAll(
+            @RequestParam(required = false) String ngay,
+            @RequestParam(required = false) String trangThai,
+            @RequestParam(required = false) String maRay) {
+
+        List<LichTrinh> result;
+        if (ngay != null && !ngay.isEmpty()) {
+            LocalDateTime start = LocalDateTime.parse(ngay + "T00:00:00");
+            LocalDateTime end = LocalDateTime.parse(ngay + "T23:59:59");
+            
+            // Lấy theo giờ đến dự kiến thay vì ngày chạy
+            if (maRay != null && !maRay.isEmpty()) {
+                // Filter theo ray và thời gian
+                result = lichTrinhRepo.findByMaRay(maRay).stream()
+                    .filter(lt -> lt.getGioDenDuKien() != null && 
+                                  !lt.getGioDenDuKien().isBefore(start) && 
+                                  !lt.getGioDenDuKien().isAfter(end))
+                    .toList();
+            } else {
+                result = lichTrinhRepo.findByGioDenDuKienBetween(start, end);
+            }
+        } else if (trangThai != null && !trangThai.isEmpty()) {
+            result = lichTrinhRepo.findByTrangThai(trangThai);
+        } else {
+            result = lichTrinhRepo.findAll();
+        }
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    @GetMapping("/lich-trinh/{id}")
+    public ResponseEntity<ApiResponse<LichTrinh>> getById(@PathVariable String id) {
+        return lichTrinhRepo.findById(id)
+                .map(lt -> ResponseEntity.ok(ApiResponse.ok(lt)))
+                .orElse(ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy lịch trình")));
+    }
+
+    @PostMapping("/lich-trinh")
+    public ResponseEntity<ApiResponse<LichTrinh>> create(@RequestBody LichTrinh lichTrinh) {
+        if (lichTrinh.getMaLichTrinh() == null || lichTrinh.getMaLichTrinh().isEmpty()) {
+            lichTrinh.setMaLichTrinh("LT-" + System.currentTimeMillis());
+        }
+        LichTrinh saved = lichTrinhRepo.save(lichTrinh);
+        return ResponseEntity.ok(ApiResponse.ok("Tạo lịch trình thành công", saved));
+    }
+
+    @PutMapping("/lich-trinh/{id}")
+    public ResponseEntity<ApiResponse<LichTrinh>> update(@PathVariable String id, @RequestBody LichTrinh lichTrinh) {
+        if (!lichTrinhRepo.existsById(id)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy lịch trình"));
+        }
+        lichTrinh.setMaLichTrinh(id);
+        LichTrinh saved = lichTrinhRepo.save(lichTrinh);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật lịch trình thành công", saved));
+    }
+
+    @DeleteMapping("/lich-trinh/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
+        if (!lichTrinhRepo.existsById(id)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy lịch trình"));
+        }
+        lichTrinhRepo.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.ok("Xóa lịch trình thành công", null));
+    }
+
+    // === CHUYẾN TÀU ===
+    @GetMapping("/chuyen-tau")
+    public ResponseEntity<ApiResponse<List<ChuyenTau>>> getAllChuyenTau(
+            @RequestParam(required = false) String vaiTro) {
+        List<ChuyenTau> result;
+        if (vaiTro != null && !vaiTro.isEmpty()) {
+            result = chuyenTauRepo.findByVaiTroTaiDaNang(vaiTro);
+        } else {
+            result = chuyenTauRepo.findAll();
+        }
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    @GetMapping("/chuyen-tau/{id}")
+    public ResponseEntity<ApiResponse<ChuyenTau>> getChuyenTauById(@PathVariable String id) {
+        return chuyenTauRepo.findById(id)
+                .map(ct -> ResponseEntity.ok(ApiResponse.ok(ct)))
+                .orElse(ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy chuyến tàu")));
+    }
+
+    @PostMapping("/chuyen-tau")
+    public ResponseEntity<ApiResponse<ChuyenTau>> createChuyenTau(@RequestBody ChuyenTau chuyenTau) {
+        if (chuyenTau.getMaChuyenTau() == null || chuyenTau.getMaChuyenTau().isEmpty()) {
+            chuyenTau.setMaChuyenTau("CT-" + System.currentTimeMillis());
+        }
+        ChuyenTau saved = chuyenTauRepo.save(chuyenTau);
+        return ResponseEntity.ok(ApiResponse.ok("Tạo chuyến tàu thành công", saved));
+    }
+
+    @PutMapping("/chuyen-tau/{id}")
+    public ResponseEntity<ApiResponse<ChuyenTau>> updateChuyenTau(@PathVariable String id, @RequestBody ChuyenTau chuyenTau) {
+        if (!chuyenTauRepo.existsById(id)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy chuyến tàu"));
+        }
+        chuyenTau.setMaChuyenTau(id);
+        ChuyenTau saved = chuyenTauRepo.save(chuyenTau);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật chuyến tàu thành công", saved));
+    }
+
+    @DeleteMapping("/chuyen-tau/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteChuyenTau(@PathVariable String id) {
+        chuyenTauRepo.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.ok("Xóa chuyến tàu thành công", null));
+    }
+
+    // === TÀU ===
+    @GetMapping("/tau")
+    public ResponseEntity<ApiResponse<List<Tau>>> getAllTau() {
+        return ResponseEntity.ok(ApiResponse.ok(tauRepo.findAll()));
+    }
+
+    @PostMapping("/tau")
+    public ResponseEntity<ApiResponse<Tau>> createTau(@RequestBody Tau tau) {
+        return ResponseEntity.ok(ApiResponse.ok("Tạo tàu thành công", tauRepo.save(tau)));
+    }
+
+    @PutMapping("/tau/{id}")
+    public ResponseEntity<ApiResponse<Tau>> updateTau(@PathVariable String id, @RequestBody Tau tau) {
+        tau.setMaTau(id);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật tàu thành công", tauRepo.save(tau)));
+    }
+
+    @DeleteMapping("/tau/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteTau(@PathVariable String id) {
+        tauRepo.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.ok("Xóa tàu thành công", null));
+    }
+
+    // === ĐƯỜNG RAY ===
+    @GetMapping("/duong-ray")
+    public ResponseEntity<ApiResponse<List<DuongRay>>> getAllDuongRay() {
+        return ResponseEntity.ok(ApiResponse.ok(duongRayRepo.findAll()));
+    }
+
+    @PostMapping("/duong-ray")
+    public ResponseEntity<ApiResponse<DuongRay>> createDuongRay(@RequestBody DuongRay duongRay) {
+        return ResponseEntity.ok(ApiResponse.ok("Tạo đường ray thành công", duongRayRepo.save(duongRay)));
+    }
+
+    @PutMapping("/duong-ray/{id}")
+    public ResponseEntity<ApiResponse<DuongRay>> updateDuongRay(@PathVariable String id, @RequestBody DuongRay duongRay) {
+        duongRay.setMaRay(id);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật đường ray thành công", duongRayRepo.save(duongRay)));
+    }
+
+    // === NHẬT KÝ ===
+    @GetMapping("/nhat-ky")
+    public ResponseEntity<ApiResponse<List<NhatKy>>> getAllNhatKy() {
+        return ResponseEntity.ok(ApiResponse.ok(nhatKyRepo.findAll()));
+    }
+}
