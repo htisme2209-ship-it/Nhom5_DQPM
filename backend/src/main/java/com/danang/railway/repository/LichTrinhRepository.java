@@ -34,4 +34,8 @@ public interface LichTrinhRepository extends JpaRepository<LichTrinh, String> {
         @Param("end") LocalDateTime end, 
         @Param("trangThais") List<String> trangThais
     );
+    
+    // Query cho validation khoảng cách giữa các tàu xuất phát
+    @Query("SELECT l FROM LichTrinh l WHERE l.gioDiDuKien >= :start AND l.gioDiDuKien <= :end ORDER BY l.gioDiDuKien ASC")
+    List<LichTrinh> findByGioDiDuKienBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

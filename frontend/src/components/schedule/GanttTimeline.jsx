@@ -246,6 +246,68 @@ export default function GanttTimeline({
                                     );
                                 })}
 
+                                {/* Departure time markers - 10 minute buffer zones */}
+                                {lichTrinh
+                                    .filter(lt => lt.gioDiDuKien && (!editItem || lt.maLichTrinh !== editItem.maLichTrinh))
+                                    .map(lt => {
+                                        const tDi = formatTime(lt.gioDiDuKien);
+                                        const departurePx = getPxPos(tDi);
+
+                                        // 10 phút buffer zone (5 phút trước + 5 phút sau)
+                                        const bufferWidth = (10 / 60) * HOUR_WIDTH; // 10 phút
+                                        const bufferLeft = departurePx - (bufferWidth / 2);
+
+                                        return (
+                                            <div
+                                                key={`departure-${lt.maLichTrinh}`}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: `${bufferLeft}px`,
+                                                    top: 0,
+                                                    bottom: 0,
+                                                    width: `${bufferWidth}px`,
+                                                    background: 'rgba(239, 68, 68, 0.08)',
+                                                    border: '1px dashed rgba(239, 68, 68, 0.3)',
+                                                    pointerEvents: 'none',
+                                                    zIndex: 1
+                                                }}
+                                            >
+                                                {/* Departure marker line */}
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        top: 0,
+                                                        bottom: 0,
+                                                        width: '2px',
+                                                        background: 'rgba(239, 68, 68, 0.5)'
+                                                    }}
+                                                />
+                                                {/* Label */}
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        top: '2px',
+                                                        fontSize: '8px',
+                                                        fontWeight: 700,
+                                                        color: '#DC2626',
+                                                        background: 'rgba(254, 242, 242, 0.95)',
+                                                        padding: '1px 4px',
+                                                        borderRadius: '3px',
+                                                        whiteSpace: 'nowrap',
+                                                        border: '1px solid rgba(239, 68, 68, 0.3)'
+                                                    }}
+                                                >
+                                                    {lt.maChuyenTau} ⬅️
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                }
+
                                 {/* New schedule preview */}
                                 {isSelected && newSchedulePreview && (() => {
                                     const leftPx = getPxPos(newSchedulePreview.gioDenDuKien);

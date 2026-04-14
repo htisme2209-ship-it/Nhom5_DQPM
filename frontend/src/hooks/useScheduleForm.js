@@ -48,6 +48,7 @@ export function useScheduleForm(chuyenTau) {
             gioDiDuKien = arrivalStr ? minToTime(timeToMin(arrivalStr) + BUFFER_MINUTES) : '';
         }
 
+        // Không set ngayChay nữa vì đã được chọn trước
         setForm(f => ({ ...f, maChuyenTau, gioDenDuKien, gioDiDuKien }));
     };
 

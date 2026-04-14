@@ -2,6 +2,7 @@ import Modal from '../Modal';
 import GanttTimeline from './GanttTimeline';
 import { ROLE_LABELS } from '../../constants/scheduleConstants';
 import { BUFFER_MINUTES } from '../../utils/timeUtils';
+import { useMemo } from 'react';
 
 /**
  * Schedule Form Modal Component
@@ -23,6 +24,100 @@ export default function ScheduleFormModal({
     onSave,
     formLoading
 }) {
+    // Filter chuyến tàu theo ngày chạy đã chọn
+    const filteredChuyenTau = useMemo(() => {
+        if (!form.ngayChay) return chuyenTau;
+
+        return chuyenTau.filter(ct => {
+            if (!ct.ngayChay) return false;
+            const ctNgayChay = new Date(ct.ngayChay).toISOString().split('T')[0];
+            return ctNgayChay === form.ngayChay;
+        });
+    }, [chuyenTau, form.ngayChay]);
+
+    // Validation: Kiểm tra thời gian tạo trước 24 giờ
+    const timeValidation = useMemo(() => {
+        if (!form.gioDenDuKien && !form.gioDiDuKien) return null;
+        if (!form.ngayChay) return null; // Cần có ngày chạy
+
+        const now = new Date();
+
+        // Sử dụng ngày chạy từ form thay vì ngày hôm nay
+        const ngayChay = form.ngayChay; // Format: YYYY-MM-DD
+
+        // Tạo datetime từ form với NGÀY CHẠY
+        const gioDenDuKien = form.gioDenDuKien ? new Date(`${ngayChay}T${form.gioDenDuKien}`) : null;
+        const gioDiDuKien = form.gioDiDuKien ? new Date(`${ngayChay}T${form.gioDiDuKien}`) : null;
+
+        // Lấy thời gian sớm nhất
+        const earliestTime = gioDenDuKien && gioDiDuKien
+            ? (gioDenDuKien < gioDiDuKien ? gioDenDuKien : gioDiDuKien)
+            : (gioDenDuKien || gioDiDuKien);
+
+        if (!earliestTime) return null;
+
+        // Kiểm tra quá khứ
+        if (earliestTime < now) {
+            return {
+                type: 'error',
+                message: 'Không thể tạo lịch trình trong quá khứ',
+                detail: `Thời gian đã chọn (${earliestTime.toLocaleDateString('vi-VN')} ${earliestTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}) đã qua`
+            };
+        }
+
+        // Kiểm tra 24 giờ
+        const hoursUntil = (earliestTime - now) / (1000 * 60 * 60);
+
+        if (hoursUntil < 24) {
+            return {
+                type: 'warning',
+                message: 'Lịch trình phải được tạo trước ít nhất 24 giờ',
+                detail: `Hiện tại chỉ còn ${Math.floor(hoursUntil)} giờ ${Math.floor((hoursUntil % 1) * 60)} phút. Vui lòng chuyển sang luồng xử lý sự cố nếu cần tạo gấp.`,
+                hoursRemaining: hoursUntil
+            };
+        }
+
+        return {
+            type: 'success',
+            message: `Còn ${Math.floor(hoursUntil)} giờ đến giờ chạy`,
+            hoursRemaining: hoursUntil
+        };
+    }, [form.gioDenDuKien, form.gioDiDuKien, form.ngayChay]);
+
+    // Validation: Kiểm tra khoảng cách 10 phút giữa các tàu
+    const departureConflict = useMemo(() => {
+        if (!form.gioDiDuKien || !form.ngayChay) return null;
+
+        // Sử dụng ngày chạy từ form
+        const ngayChay = form.ngayChay;
+        const newDeparture = new Date(`${ngayChay}T${form.gioDiDuKien}`);
+
+        // Tìm các tàu xuất phát trong khoảng +/- 10 phút
+        const conflicts = lichTrinh.filter(lt => {
+            if (editItem && lt.maLichTrinh === editItem.maLichTrinh) return false;
+            if (!lt.gioDiDuKien) return false;
+
+            const ltDeparture = new Date(lt.gioDiDuKien);
+            const diffMinutes = Math.abs((newDeparture - ltDeparture) / (1000 * 60));
+
+            return diffMinutes < 10;
+        });
+
+        if (conflicts.length > 0) {
+            const conflict = conflicts[0];
+            const conflictTime = new Date(conflict.gioDiDuKien);
+            const diffMinutes = Math.abs((newDeparture - conflictTime) / (1000 * 60));
+
+            return {
+                train: conflict.maChuyenTau,
+                time: conflictTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                gap: Math.floor(diffMinutes),
+                ray: conflict.maRay
+            };
+        }
+
+        return null;
+    }, [form.gioDiDuKien, form.ngayChay, lichTrinh, editItem]);
     return (
         <Modal
             isOpen={isOpen}
@@ -31,8 +126,51 @@ export default function ScheduleFormModal({
             subtitle="Lập và điều chỉnh lịch trình chi tiết tại Ga Đà Nẵng"
             size="lg"
         >
-            {/* Row 1: Train Code only */}
+            {/* Row 1: Date Selection */}
+            {/* Row 1: Date and Train Code */}
             <div className="form-row" style={{ marginBottom: '20px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">NGÀY CHẠY</label>
+                    <div style={{ position: 'relative' }}>
+                        <span style={{
+                            position: 'absolute',
+                            left: '14px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            fontSize: '16px',
+                            opacity: 0.5
+                        }}>
+                            📅
+                        </span>
+                        <input
+                            type="date"
+                            className="form-control"
+                            style={{ paddingLeft: '42px' }}
+                            value={form.ngayChay}
+                            onChange={(e) => {
+                                // Reset mã tàu khi đổi ngày
+                                setForm({ ...form, ngayChay: e.target.value, maChuyenTau: '', gioDenDuKien: '', gioDiDuKien: '' });
+                            }}
+                            min={new Date().toISOString().split('T')[0]}
+                        />
+                    </div>
+                    {form.ngayChay && (
+                        <div style={{
+                            marginTop: '6px',
+                            fontSize: '11px',
+                            color: 'var(--gray-600)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}>
+                            <span>📊</span>
+                            <span>
+                                Có <strong>{filteredChuyenTau.length}</strong> chuyến tàu
+                            </span>
+                        </div>
+                    )}
+                </div>
+
                 <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">MÃ TÀU</label>
                     <div style={{ position: 'relative' }}>
@@ -51,9 +189,16 @@ export default function ScheduleFormModal({
                             style={{ paddingLeft: '42px' }}
                             value={form.maChuyenTau}
                             onChange={(e) => onSelectChuyenTau(e.target.value)}
+                            disabled={!form.ngayChay}
                         >
-                            <option value="">Chọn mã tàu...</option>
-                            {chuyenTau.map(ct => (
+                            <option value="">
+                                {!form.ngayChay
+                                    ? 'Chọn ngày trước...'
+                                    : filteredChuyenTau.length === 0
+                                        ? 'Không có tàu'
+                                        : 'Chọn mã tàu...'}
+                            </option>
+                            {filteredChuyenTau.map(ct => (
                                 <option key={ct.maChuyenTau} value={ct.maChuyenTau}>
                                     {ct.maChuyenTau} —{' '}
                                     {ct.vaiTroTaiDaNang === 'TRUNG_GIAN'
@@ -111,6 +256,41 @@ export default function ScheduleFormModal({
                 marginBottom: '16px',
                 border: '1px solid var(--navy-100)'
             }}>
+                {/* Validation Warning - 24 Hours Rule */}
+                {timeValidation && timeValidation.type !== 'success' && (
+                    <div style={{
+                        marginBottom: '16px',
+                        padding: '14px 16px',
+                        borderRadius: 'var(--radius)',
+                        background: timeValidation.type === 'error' ? '#FEF2F2' : '#FFF7ED',
+                        border: `1px solid ${timeValidation.type === 'error' ? '#FCA5A5' : '#FED7AA'}`,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px'
+                    }}>
+                        <span style={{ fontSize: '20px', marginTop: '2px' }}>
+                            {timeValidation.type === 'error' ? '🚫' : '⚠️'}
+                        </span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{
+                                fontWeight: 700,
+                                fontSize: '13px',
+                                color: timeValidation.type === 'error' ? '#991B1B' : '#C2410C',
+                                marginBottom: '4px'
+                            }}>
+                                {timeValidation.message}
+                            </div>
+                            <div style={{
+                                fontSize: '12px',
+                                color: timeValidation.type === 'error' ? '#7F1D1D' : '#9A3412',
+                                lineHeight: '1.5'
+                            }}>
+                                {timeValidation.detail}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="form-row">
                     <div className="form-group" style={{ marginBottom: '8px' }}>
                         <label className="form-label">
@@ -139,7 +319,8 @@ export default function ScheduleFormModal({
                                     fontWeight: 600,
                                     letterSpacing: '1px',
                                     height: '48px',
-                                    background: selectedCT?.vaiTroTaiDaNang === 'XUAT_PHAT' ? 'var(--gray-100)' : 'var(--white)'
+                                    background: selectedCT?.vaiTroTaiDaNang === 'XUAT_PHAT' ? 'var(--gray-100)' : 'var(--white)',
+                                    borderColor: timeValidation?.type === 'error' ? '#EF4444' : undefined
                                 }}
                                 value={form.gioDenDuKien}
                                 onChange={(e) => setForm({ ...form, gioDenDuKien: e.target.value })}
@@ -174,7 +355,8 @@ export default function ScheduleFormModal({
                                     fontWeight: 600,
                                     letterSpacing: '1px',
                                     height: '48px',
-                                    background: selectedCT?.vaiTroTaiDaNang === 'DIEM_CUOI' ? 'var(--gray-100)' : 'var(--white)'
+                                    background: selectedCT?.vaiTroTaiDaNang === 'DIEM_CUOI' ? 'var(--gray-100)' : 'var(--white)',
+                                    borderColor: timeValidation?.type === 'error' || departureConflict ? '#EF4444' : undefined
                                 }}
                                 value={form.gioDiDuKien}
                                 onChange={(e) => setForm({ ...form, gioDiDuKien: e.target.value })}
@@ -183,6 +365,41 @@ export default function ScheduleFormModal({
                         </div>
                     </div>
                 </div>
+
+                {/* Departure Conflict Warning - 10 Minutes Rule */}
+                {departureConflict && (
+                    <div style={{
+                        marginTop: '12px',
+                        padding: '12px 16px',
+                        borderRadius: 'var(--radius)',
+                        background: '#FEF2F2',
+                        border: '1px solid #FCA5A5',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px'
+                    }}>
+                        <span style={{ fontSize: '18px', marginTop: '2px' }}>🚦</span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{
+                                fontWeight: 700,
+                                fontSize: '13px',
+                                color: '#991B1B',
+                                marginBottom: '4px'
+                            }}>
+                                Khoảng cách giữa các tàu xuất phát phải ≥ 10 phút
+                            </div>
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#7F1D1D',
+                                lineHeight: '1.5'
+                            }}>
+                                Tàu <strong>{departureConflict.train}</strong> (Ray {departureConflict.ray}) đã có lịch xuất phát lúc{' '}
+                                <strong>{departureConflict.time}</strong> (cách <strong>{departureConflict.gap} phút</strong>).
+                                Vui lòng chọn thời gian khác.
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Buffer Info */}
                 {bufferInfo && (
@@ -381,6 +598,16 @@ export default function ScheduleFormModal({
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span style={{
+                                width: '12px',
+                                height: '8px',
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px dashed rgba(239, 68, 68, 0.4)',
+                                display: 'inline-block'
+                            }} />
+                            VÙNG 10 PHÚT
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{
                                 width: '8px',
                                 height: '8px',
                                 borderRadius: '50%',
@@ -389,6 +616,28 @@ export default function ScheduleFormModal({
                             }} />
                             ĐANG CHỌN
                         </span>
+                    </div>
+                </div>
+
+                {/* Info box - Validation Rules */}
+                <div style={{
+                    marginBottom: '12px',
+                    padding: '10px 14px',
+                    background: 'var(--blue-50)',
+                    border: '1px solid var(--blue-200)',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '11px',
+                    color: 'var(--blue-800)',
+                    lineHeight: '1.6'
+                }}>
+                    <div style={{ fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>ℹ️</span>
+                        <span>QUY TẮC TẠO LỊCH TRÌNH</span>
+                    </div>
+                    <div style={{ paddingLeft: '22px' }}>
+                        • Phải tạo trước <strong>ít nhất 24 giờ</strong> so với giờ chạy<br />
+                        • Các tàu xuất phát phải cách nhau <strong>≥ 10 phút</strong> (vùng đỏ trên timeline)<br />
+                        • Không được tạo lịch trình trong quá khứ
                     </div>
                 </div>
 
@@ -448,13 +697,33 @@ export default function ScheduleFormModal({
                 <button
                     className="btn btn-primary btn-lg"
                     onClick={onSave}
-                    disabled={formLoading}
+                    disabled={
+                        formLoading ||
+                        timeValidation?.type === 'error' ||
+                        timeValidation?.type === 'warning' ||
+                        departureConflict ||
+                        formConflictWarning
+                    }
                     style={{
                         minWidth: '180px',
-                        background: formConflictWarning ? 'var(--red-500)' : undefined
+                        background: (timeValidation?.type === 'error' || departureConflict || formConflictWarning)
+                            ? 'var(--red-500)'
+                            : timeValidation?.type === 'warning'
+                                ? 'var(--orange-500)'
+                                : undefined,
+                        opacity: (timeValidation?.type === 'error' || timeValidation?.type === 'warning' || departureConflict || formConflictWarning)
+                            ? 0.5
+                            : 1
                     }}
                 >
-                    {formLoading ? '⏳ Đang lưu...' : `🔒 ${editItem ? 'Cập nhật' : 'Lưu lịch trình'}`}
+                    {formLoading
+                        ? '⏳ Đang lưu...'
+                        : (timeValidation?.type === 'error' || departureConflict || formConflictWarning)
+                            ? '🚫 Không thể lưu'
+                            : timeValidation?.type === 'warning'
+                                ? '⚠️ Cần > 24h'
+                                : `🔒 ${editItem ? 'Cập nhật' : 'Lưu lịch trình'}`
+                    }
                 </button>
             </div>
         </Modal>

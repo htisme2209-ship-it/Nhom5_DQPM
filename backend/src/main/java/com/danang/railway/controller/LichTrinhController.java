@@ -3,6 +3,7 @@ package com.danang.railway.controller;
 import com.danang.railway.dto.ApiResponse;
 import com.danang.railway.entity.*;
 import com.danang.railway.repository.*;
+import com.danang.railway.service.LichTrinhService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +19,7 @@ import java.util.*;
 public class LichTrinhController {
 
     private final LichTrinhRepository lichTrinhRepo;
+    private final LichTrinhService lichTrinhService;
     private final ChuyenTauRepository chuyenTauRepo;
     private final DuongRayRepository duongRayRepo;
     private final TauRepository tauRepo;
@@ -62,21 +64,22 @@ public class LichTrinhController {
 
     @PostMapping("/lich-trinh")
     public ResponseEntity<ApiResponse<LichTrinh>> create(@RequestBody LichTrinh lichTrinh) {
-        if (lichTrinh.getMaLichTrinh() == null || lichTrinh.getMaLichTrinh().isEmpty()) {
-            lichTrinh.setMaLichTrinh("LT-" + System.currentTimeMillis());
+        try {
+            LichTrinh saved = lichTrinhService.taoLichTrinh(lichTrinh);
+            return ResponseEntity.ok(ApiResponse.ok("Tạo lịch trình thành công", saved));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-        LichTrinh saved = lichTrinhRepo.save(lichTrinh);
-        return ResponseEntity.ok(ApiResponse.ok("Tạo lịch trình thành công", saved));
     }
 
     @PutMapping("/lich-trinh/{id}")
     public ResponseEntity<ApiResponse<LichTrinh>> update(@PathVariable String id, @RequestBody LichTrinh lichTrinh) {
-        if (!lichTrinhRepo.existsById(id)) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy lịch trình"));
+        try {
+            LichTrinh saved = lichTrinhService.capNhatLichTrinh(id, lichTrinh);
+            return ResponseEntity.ok(ApiResponse.ok("Cập nhật lịch trình thành công", saved));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-        lichTrinh.setMaLichTrinh(id);
-        LichTrinh saved = lichTrinhRepo.save(lichTrinh);
-        return ResponseEntity.ok(ApiResponse.ok("Cập nhật lịch trình thành công", saved));
     }
 
     @DeleteMapping("/lich-trinh/{id}")
