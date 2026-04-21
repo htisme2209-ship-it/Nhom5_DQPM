@@ -24,6 +24,7 @@ import XacNhanTauPage from './pages/nhaga/XacNhanTauPage';
 import QuanLyDashboard from './pages/quanly/QuanLyDashboard';
 import ChiDaoPage from './pages/quanly/ChiDaoPage';
 import BaoCaoPage from './pages/quanly/BaoCaoPage';
+import XuatBaoCaoPage from './pages/quanly/XuatBaoCaoPage';
 
 import PlaceholderPage from './pages/PlaceholderPage';
 import './index.css';
@@ -96,6 +97,7 @@ function AppRoutes() {
         <Route path="chi-dao" element={<ChiDaoPage />} />
         <Route path="bao-cao" element={<BaoCaoPage />} />
         <Route path="nhan-su" element={<TaiKhoanPage />} />
+        <Route path="xuat-bao-cao" element={<XuatBaoCaoPage />} />
       </Route>
 
       {/* Default route */}
