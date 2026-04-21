@@ -8,6 +8,7 @@ import DieuHanhDashboard from './pages/dieuhanh/DieuHanhDashboard';
 import LichTrinhPage from './pages/dieuhanh/LichTrinhPage';
 import KeHoachPage from './pages/dieuhanh/KeHoachPage';
 import XuLySuCoPage from './pages/dieuhanh/XuLySuCoPage';
+import MoPhongLichTrinhPage from './pages/dieuhanh/MoPhongLichTrinhPage';
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -57,7 +58,7 @@ function AppRoutes() {
         <Route path="duong-ray" element={<DieuPhoiRayPage />} />
         <Route path="xu-ly-su-co" element={<XuLySuCoPage />} />
         <Route path="ke-hoach" element={<KeHoachPage />} />
-        <Route path="mo-phong" element={<PlaceholderPage title="Mô phỏng Lịch trình" description="Công cụ mô phỏng và dự đoán xung đột lịch trình" />} />
+        <Route path="mo-phong" element={<MoPhongLichTrinhPage />} />
       </Route>
 
       {/* ===== Admin routes ===== */}

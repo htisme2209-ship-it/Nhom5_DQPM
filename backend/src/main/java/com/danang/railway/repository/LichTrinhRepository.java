@@ -12,7 +12,26 @@ public interface LichTrinhRepository extends JpaRepository<LichTrinh, String> {
     List<LichTrinh> findByMaRay(String maRay);
     List<LichTrinh> findByTrangThai(String trangThai);
 
-    // Query dựa trên giờ đến/đi thay vì ngày chạy
+    // ── Lọc theo ngày chạy (join sang ChuyenTau) ──────────────────────────────
+    /**
+     * Lấy tất cả LichTrinh theo ngayChay của ChuyenTau liên kết.
+     * Áp dụng cho mọi loại tàu (XUAT_PHAT / DIEM_CUOI / TRUNG_GIAN)
+     * vì ngayChay nằm ở ChuyenTau, không phải LichTrinh.
+     */
+    @Query("SELECT l FROM LichTrinh l JOIN ChuyenTau c ON l.maChuyenTau = c.maChuyenTau " +
+           "WHERE c.ngayChay = :ngayChay")
+    List<LichTrinh> findByNgayChayChuyenTau(@Param("ngayChay") String ngayChay);
+
+    /**
+     * Lọc thêm theo maRay kết hợp ngayChay.
+     */
+    @Query("SELECT l FROM LichTrinh l JOIN ChuyenTau c ON l.maChuyenTau = c.maChuyenTau " +
+           "WHERE c.ngayChay = :ngayChay AND l.maRay = :maRay")
+    List<LichTrinh> findByNgayChayChuyenTauAndMaRay(
+            @Param("ngayChay") String ngayChay,
+            @Param("maRay") String maRay);
+
+    // ── Queries cũ (giữ lại để các service khác dùng) ─────────────────────────
     @Query("SELECT l FROM LichTrinh l WHERE l.gioDenDuKien >= :start AND l.gioDenDuKien <= :end")
     List<LichTrinh> findByGioDenDuKienBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
