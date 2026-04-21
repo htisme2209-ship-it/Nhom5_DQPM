@@ -33,19 +33,12 @@ public class LichTrinhController {
 
         List<LichTrinh> result;
         if (ngay != null && !ngay.isEmpty()) {
-            LocalDateTime start = LocalDateTime.parse(ngay + "T00:00:00");
-            LocalDateTime end = LocalDateTime.parse(ngay + "T23:59:59");
-            
-            // Lấy theo giờ đến dự kiến thay vì ngày chạy
+            // Lọc theo ngayChay của ChuyenTau (JOIN query)
+            // Áp dụng cho mọi loại tàu: XUAT_PHAT/DIEM_CUOI/TRUNG_GIAN
             if (maRay != null && !maRay.isEmpty()) {
-                // Filter theo ray và thời gian
-                result = lichTrinhRepo.findByMaRay(maRay).stream()
-                    .filter(lt -> lt.getGioDenDuKien() != null && 
-                                  !lt.getGioDenDuKien().isBefore(start) && 
-                                  !lt.getGioDenDuKien().isAfter(end))
-                    .toList();
+                result = lichTrinhRepo.findByNgayChayChuyenTauAndMaRay(ngay, maRay);
             } else {
-                result = lichTrinhRepo.findByGioDenDuKienBetween(start, end);
+                result = lichTrinhRepo.findByNgayChayChuyenTau(ngay);
             }
         } else if (trangThai != null && !trangThai.isEmpty()) {
             result = lichTrinhRepo.findByTrangThai(trangThai);
@@ -94,13 +87,26 @@ public class LichTrinhController {
     // === CHUYẾN TÀU ===
     @GetMapping("/chuyen-tau")
     public ResponseEntity<ApiResponse<List<ChuyenTau>>> getAllChuyenTau(
-            @RequestParam(required = false) String vaiTro) {
+            @RequestParam(required = false) String vaiTro,
+            @RequestParam(required = false) String ngay) {
         List<ChuyenTau> result;
-        if (vaiTro != null && !vaiTro.isEmpty()) {
+        
+        if (ngay != null && !ngay.isEmpty()) {
+            // Filter theo ngày chạy
+            result = chuyenTauRepo.findByNgayChay(ngay);
+            
+            // Nếu có thêm filter vai trò
+            if (vaiTro != null && !vaiTro.isEmpty()) {
+                result = result.stream()
+                    .filter(ct -> vaiTro.equals(ct.getVaiTroTaiDaNang()))
+                    .toList();
+            }
+        } else if (vaiTro != null && !vaiTro.isEmpty()) {
             result = chuyenTauRepo.findByVaiTroTaiDaNang(vaiTro);
         } else {
             result = chuyenTauRepo.findAll();
         }
+        
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 

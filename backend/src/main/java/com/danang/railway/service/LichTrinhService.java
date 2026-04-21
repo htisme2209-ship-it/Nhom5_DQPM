@@ -76,9 +76,10 @@ public class LichTrinhService {
         
         LocalDateTime now = LocalDateTime.now();
         
-        // Nếu thay đổi thời gian, cần validate lại
-        boolean thayDoiThoiGian = !lichTrinhCu.getGioDenDuKien().equals(lichTrinhMoi.getGioDenDuKien()) ||
-                                   !lichTrinhCu.getGioDiDuKien().equals(lichTrinhMoi.getGioDiDuKien());
+        // Kiểm tra thay đổi thời gian (null-safe: một số loại tàu không có đủ cả 2 trường)
+        boolean thayDoiThoiGian =
+            !java.util.Objects.equals(lichTrinhCu.getGioDenDuKien(), lichTrinhMoi.getGioDenDuKien()) ||
+            !java.util.Objects.equals(lichTrinhCu.getGioDiDuKien(),  lichTrinhMoi.getGioDiDuKien());
         
         if (thayDoiThoiGian) {
             kiemTraKhongChoPhepQuaKhu(lichTrinhMoi, now);
