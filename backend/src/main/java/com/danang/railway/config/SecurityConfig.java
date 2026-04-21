@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("QUAN_TRI_VIEN")
                 .requestMatchers("/api/dieu-hanh/**").hasRole("NHAN_VIEN_DIEU_HANH")
+                .requestMatchers("/api/kehoach/**").hasRole("NHAN_VIEN_DIEU_HANH")
                 .requestMatchers("/api/nha-ga/**").hasRole("NHAN_VIEN_NHA_GA")
                 .requestMatchers("/api/quan-ly/**").hasRole("BAN_QUAN_LY")
                 .requestMatchers("/api/**").authenticated()

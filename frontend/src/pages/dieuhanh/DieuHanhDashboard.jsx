@@ -7,6 +7,8 @@ export default function DieuHanhDashboard() {
   });
   const [lichTrinh, setLichTrinh] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLichTrinh, setSelectedLichTrinh] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -51,6 +53,34 @@ export default function DieuHanhDashboard() {
     if (!dt) return '---';
     const d = new Date(dt);
     return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+  };
+
+  const formatDateTime = (dt) => {
+    if (!dt) return '---';
+    const d = new Date(dt);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    const hour = d.getHours().toString().padStart(2, '0');
+    const minute = d.getMinutes().toString().padStart(2, '0');
+    return `${day}/${month}/${year} ${hour}:${minute}`;
+  };
+
+  const handleViewDetail = async (maLichTrinh) => {
+    try {
+      setLoadingDetail(true);
+      const res = await lichTrinhAPI.getById(maLichTrinh);
+      setSelectedLichTrinh(res.data.data || null);
+    } catch (e) {
+      console.error(e);
+      alert('Không thể tải chi tiết lịch trình.');
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const closeDetailModal = () => {
+    setSelectedLichTrinh(null);
   };
 
   if (loading) return <div className="text-center text-muted" style={{ padding: '60px' }}>Đang tải...</div>;
@@ -164,7 +194,13 @@ export default function DieuHanhDashboard() {
                       </td>
                       <td><span className={`badge ${cls}`}>{label}</span></td>
                       <td>
-                        <button className="btn btn-secondary btn-sm">Xem</button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleViewDetail(lt.maLichTrinh)}
+                          disabled={loadingDetail}
+                        >
+                          {loadingDetail ? 'Đang tải...' : 'Xem'}
+                        </button>
                       </td>
                     </tr>
                   );
@@ -174,6 +210,55 @@ export default function DieuHanhDashboard() {
           </table>
         </div>
       </div>
+
+      {(loadingDetail || selectedLichTrinh) && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px'
+          }}
+          onClick={closeDetailModal}
+        >
+          <div
+            className="card"
+            style={{ width: '100%', maxWidth: '640px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="card-header" style={{ justifyContent: 'space-between' }}>
+              <h3>Chi tiết lịch trình</h3>
+              <button className="btn btn-secondary btn-sm" onClick={closeDetailModal}>Đóng</button>
+            </div>
+
+            <div style={{ padding: '16px' }}>
+              {loadingDetail && <p className="text-muted">Đang tải chi tiết...</p>}
+
+              {!loadingDetail && selectedLichTrinh && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div><strong>Mã lịch trình:</strong> {selectedLichTrinh.maLichTrinh || '---'}</div>
+                  <div><strong>Mã chuyến tàu:</strong> {selectedLichTrinh.maChuyenTau || '---'}</div>
+                  <div><strong>Đường ray:</strong> {selectedLichTrinh.maRay || '---'}</div>
+                  <div><strong>Trạng thái:</strong> {getTrangThaiLabel(selectedLichTrinh.trangThai).label}</div>
+                  <div><strong>Giờ đến dự kiến:</strong> {formatDateTime(selectedLichTrinh.gioDenDuKien)}</div>
+                  <div><strong>Giờ đi dự kiến:</strong> {formatDateTime(selectedLichTrinh.gioDiDuKien)}</div>
+                  <div><strong>Giờ đến thực tế:</strong> {formatDateTime(selectedLichTrinh.gioDenThucTe)}</div>
+                  <div><strong>Giờ đi thực tế:</strong> {formatDateTime(selectedLichTrinh.gioDiThucTe)}</div>
+                  <div><strong>Số phút trễ:</strong> {selectedLichTrinh.soPhutTre ?? 0} phút</div>
+                  <div><strong>Ngày chạy:</strong> {formatDateTime(selectedLichTrinh.ngayChay)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
