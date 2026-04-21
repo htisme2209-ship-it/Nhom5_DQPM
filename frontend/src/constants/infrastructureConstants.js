@@ -50,6 +50,7 @@ export const DEFAULT_TUYEN_FORM = {
     tenTuyen: '',
     maGaDau: '',
     maGaCuoi: '',
+    gaGiua: [],
     khoangCachKm: '',
     trangThai: 'HOAT_DONG'
 };
