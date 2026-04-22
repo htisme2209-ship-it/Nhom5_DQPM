@@ -82,7 +82,9 @@ public class SuCoController {
     }
 
     /**
-     * UC-06: Xử lý phương án cho lịch trình bị ảnh hưởng (Nhân viên Điều hành)
+     * UC-06: Xử lý phương án cho lịch trình bị ảnh hưởng
+     * - NHAN_VIEN_NHA_GA: chỉ được HUY_CHUYEN
+     * - NHAN_VIEN_DIEU_HANH: được HUY_CHUYEN và DOI_RAY
      */
     @PutMapping("/xu-ly-phuong-an")
     public ResponseEntity<ApiResponse<String>> xuLyPhuongAn(
@@ -96,16 +98,25 @@ public class SuCoController {
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
             
             String diaChiIp = httpRequest.getRemoteAddr();
-            
-            // Kiểm tra quyền
-            if (!"NHAN_VIEN_DIEU_HANH".equals(user.getQuyenTruyCap())) {
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.error("Chỉ Nhân viên Điều hành mới có quyền xử lý phương án"));
-            }
-            
-            String maLichTrinh = request.get("maLichTrinh");
+            String quyen = user.getQuyenTruyCap();
             String phuongAn = request.get("phuongAn");
+            String maLichTrinh = request.get("maLichTrinh");
             String maRayMoi = request.get("maRayMoi");
+
+            // Kiểm tra quyền
+            boolean laNhaGa = "NHAN_VIEN_NHA_GA".equals(quyen);
+            boolean laDieuHanh = "NHAN_VIEN_DIEU_HANH".equals(quyen);
+
+            if (!laNhaGa && !laDieuHanh) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Không có quyền xử lý phương án"));
+            }
+
+            // Nhà ga chỉ được hủy chuyến, không được đổi ray
+            if (laNhaGa && !"HUY_CHUYEN".equals(phuongAn)) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Nhà ga chỉ được phép hủy chuyến. Việc đổi ray do Nhân viên Điều hành thực hiện."));
+            }
             
             suCoService.xuLyPhuongAnLichTrinh(maLichTrinh, phuongAn, maRayMoi, 
                     user.getMaTaiKhoan(), diaChiIp);
@@ -319,6 +330,41 @@ public class SuCoController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Lỗi khi báo cáo: " + e.getMessage()));
+        }
+    }
+    /**
+     * Cập nhật trạng thái xử lý sự cố (CHUA_XU_LY → DANG_XU_LY → DA_XU_LY)
+     */
+    @PutMapping("/{maSuCo}")
+    public ResponseEntity<ApiResponse<SuCo>> capNhatTrangThai(
+            @PathVariable String maSuCo,
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+
+        try {
+            String maTaiKhoan = authentication.getName();
+            var user = taiKhoanRepo.findById(maTaiKhoan)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+
+            if (!"NHAN_VIEN_DIEU_HANH".equals(user.getQuyenTruyCap())) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Chỉ Nhân viên Điều hành mới có quyền cập nhật trạng thái"));
+            }
+
+            String trangThaiMoi = request.get("trangThaiXuLy");
+            if (trangThaiMoi == null || trangThaiMoi.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("trangThaiXuLy không được để trống"));
+            }
+
+            SuCo suCo = suCoService.timSuCoTheoMa(maSuCo);
+            suCo.setTrangThaiXuLy(trangThaiMoi);
+            SuCo result = suCoService.luuSuCo(suCo);
+
+            return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái thành công", result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Lỗi khi cập nhật trạng thái: " + e.getMessage()));
         }
     }
 }

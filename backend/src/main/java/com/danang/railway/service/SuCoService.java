@@ -205,6 +205,11 @@ public class SuCoService {
                 "Phương án: " + phuongAnCu + ", Ray: " + maRayCu,
                 "Phương án: " + phuongAn + ", Ray: " + (maRayMoi != null ? maRayMoi : maRayCu),
                 diaChiIp);
+
+        // Tự động kiểm tra giải phóng ray nếu đã xử lý hết
+        if ("DOI_RAY".equals(phuongAn) || "HUY_CHUYEN".equals(phuongAn)) {
+            kiemTraTuDongGiaiPhongRay(lichTrinh, maTaiKhoan, diaChiIp);
+        }
     }
 
     /**
@@ -301,6 +306,56 @@ public class SuCoService {
         ghiNhatKy(maTaiKhoan, "GIAI_PHONG_RAY", "DUONG_RAY", maRay,
                 "Trạng thái: " + trangThaiCu,
                 "Trạng thái: SAN_SANG, Sự cố " + maSuCo + " đã xử lý xong",
+                diaChiIp);
+    }
+
+    /**
+     * Tự động kiểm tra và giải phóng đường ray PHONG_TOA_TAM
+     * Được gọi sau mỗi lần xử lý lịch trình (HUY_CHUYEN / DOI_RAY)
+     * Điều kiện: không còn lịch trình nào ở trạng thái CHO_RAY và ray là PHONG_TOA_TAM
+     */
+    private void kiemTraTuDongGiaiPhongRay(LichTrinh lichTrinh, String maTaiKhoan, String diaChiIp) {
+        String maSuCo = lichTrinh.getMaSuCoAnhHuong();
+        if (maSuCo == null) return;
+
+        SuCo suCo = suCoRepo.findById(maSuCo).orElse(null);
+        if (suCo == null) return;
+
+        // Không tự động giải phóng nếu sự cố đã xử lý xong hoặc chưa bắt đầu
+        if ("DA_XU_LY".equals(suCo.getTrangThaiXuLy())) return;
+
+        // Kiểm tra còn lịch trình CHO_RAY không
+        List<LichTrinh> conChuaXuLy = lichTrinhRepo.findByMaSuCoAnhHuongAndPhuongAnXuLy(maSuCo, "CHO_RAY");
+        if (!conChuaXuLy.isEmpty()) return; // Còn lịch trình chưa xử lý — chưa giải phóng
+
+        // Lấy đường ray của sự cố
+        if (suCo.getMaRay() == null) return;
+        DuongRay ray = duongRayRepo.findById(suCo.getMaRay()).orElse(null);
+        if (ray == null) return;
+
+        // Chỉ tự động giải phóng PHONG_TOA_TAM — PHONG_TOA_CUNG cần BQL thao tác thủ công
+        if (!"PHONG_TOA_TAM".equals(ray.getTrangThai())) return;
+
+        String trangThaiCu = ray.getTrangThai();
+
+        // Giải phóng ray
+        ray.setTrangThai("SAN_SANG");
+        ray.setThoiGianXuLyUocTinh(null);
+        ray.setThoiGianPhongToaUocTinh(null);
+        duongRayRepo.save(ray);
+
+        // Đánh dấu sự cố là DA_XU_LY
+        suCo.setTrangThaiXuLy("DA_XU_LY");
+        suCo.setNgayXuLy(LocalDateTime.now());
+        suCoRepo.save(suCo);
+
+        // Ghi nhật ký tự động
+        ghiNhatKy(maTaiKhoan,
+                "TU_DONG_GIAI_PHONG_RAY",
+                "DUONG_RAY",
+                suCo.getMaRay(),
+                "Trạng thái: " + trangThaiCu,
+                "Trạng thái: SAN_SANG — Tự động giải phóng sau khi xử lý hết lịch trình bị ảnh hưởng bởi sự cố " + maSuCo,
                 diaChiIp);
     }
 
@@ -579,5 +634,20 @@ public class SuCoService {
                 diaChiIp);
         
         return savedSuCo;
+    }
+
+    /**
+     * Tìm sự cố theo mã
+     */
+    public SuCo timSuCoTheoMa(String maSuCo) {
+        return suCoRepo.findById(maSuCo)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sự cố: " + maSuCo));
+    }
+
+    /**
+     * Lưu sự cố
+     */
+    public SuCo luuSuCo(SuCo suCo) {
+        return suCoRepo.save(suCo);
     }
 }

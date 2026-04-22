@@ -34,11 +34,6 @@ public class SuCoKeHoachController {
         return ResponseEntity.ok(ApiResponse.ok("Ghi nhận sự cố thành công", suCoRepo.save(suCo)));
     }
 
-    @PutMapping("/su-co/{id}")
-    public ResponseEntity<ApiResponse<SuCo>> updateSuCo(@PathVariable String id, @RequestBody SuCo suCo) {
-        suCo.setMaSuCo(id);
-        return ResponseEntity.ok(ApiResponse.ok("Cập nhật sự cố thành công", suCoRepo.save(suCo)));
-    }
 
     // === KẾ HOẠCH ĐẶC BIỆT ===
     @GetMapping("/ke-hoach")

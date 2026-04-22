@@ -81,6 +81,7 @@ export const suCoAPI = {
   luuNhap: (data) => api.post('/su-co/luu-nhap', data),
   kichHoat: (maSuCo) => api.post(`/su-co/${maSuCo}/kich-hoat`),
   baoCaoNhanh: (data) => api.post('/su-co/bao-cao-nhanh', data),
+  capNhatTrangThai: (maSuCo, trangThaiXuLy) => api.put(`/su-co/${maSuCo}`, { trangThaiXuLy }),
 };
 
 export const keHoachAPI = {

@@ -49,9 +49,9 @@ public class LichTrinhService {
             lichTrinh.setMaLichTrinh("LT-" + System.currentTimeMillis());
         }
         
-        // Set trạng thái mặc định
+        // Set trạng thái mặc định — lịch trình đã chọn ray khi tạo nên mặc định là DA_XAC_NHAN
         if (lichTrinh.getTrangThai() == null) {
-            lichTrinh.setTrangThai("CHO_XAC_NHAN");
+            lichTrinh.setTrangThai("DA_XAC_NHAN");
         }
         
         // Set thời gian tạo
