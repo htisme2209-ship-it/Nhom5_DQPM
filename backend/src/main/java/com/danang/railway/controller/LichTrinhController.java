@@ -5,6 +5,8 @@ import com.danang.railway.entity.*;
 import com.danang.railway.repository.*;
 import com.danang.railway.service.LichTrinhService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -185,6 +187,17 @@ public class LichTrinhController {
     // === NHẬT KÝ ===
     @GetMapping("/nhat-ky")
     public ResponseEntity<ApiResponse<List<NhatKy>>> getAllNhatKy() {
-        return ResponseEntity.ok(ApiResponse.ok(nhatKyRepo.findAll()));
+        try {
+            // Lấy trang đầu tiên, tối đa 500 bản ghi để tối ưu hiệu suất
+            Pageable top500 = PageRequest.of(0, 500);
+            
+            // Dùng .getContent() để chuyển từ Page<NhatKy> sang List<NhatKy> cho React
+            List<NhatKy> dsNhatKy = nhatKyRepo.findAllByOrderByThoiGianDesc(top500).getContent();
+            
+            return ResponseEntity.ok(ApiResponse.ok(dsNhatKy));
+        } catch (Exception e) {
+            e.printStackTrace(); 
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Lỗi khi lấy dữ liệu nhật ký: " + e.getMessage()));
+        }
     }
 }

@@ -1,17 +1,1 @@
-# IDE - Chặn folder cấu hình của Cursor/IntelliJ
-.idea/
-*.iml
-.vscode/
-
-# Build - Chặn đống file .class nhị phân gây lỗi
-backend/target/
-**/target/
-*.class
-
-# Node - Chặn thư mục rác của React
-node_modules/
-frontend/node_modules/
-frontend/dist/
-
-# System
-.DS_Store
+/nbproject/private/

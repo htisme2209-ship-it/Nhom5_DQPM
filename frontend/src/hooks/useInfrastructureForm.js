@@ -71,6 +71,7 @@ export default function useInfrastructureForm(type, onSuccess, onError) {
                 tenTuyen: item.tenTuyen,
                 maGaDau: item.maGaDau,
                 maGaCuoi: item.maGaCuoi,
+                gaGiua: item.gaGiua || [],
                 khoangCachKm: item.khoangCachKm?.toString() || '',
                 trangThai: item.trangThai
             });

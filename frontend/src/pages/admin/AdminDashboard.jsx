@@ -179,6 +179,13 @@ export default function AdminDashboard() {
               <div className="quick-action-desc">Lịch sử hoạt động</div>
             </div>
           </Link>
+          <Link to="/admin/quy-tac-he-thong" className="quick-action-card">
+            <div className="quick-action-icon" style={{ background: 'var(--indigo-100)', color: 'var(--indigo-600)' }}>⚙️</div>
+            <div>
+              <div className="quick-action-title">Quy tắc</div>
+              <div className="quick-action-desc">Quy trình & nghiệp vụ</div>
+            </div>
+          </Link>
           <button className="quick-action-card" onClick={loadData}>
             <div className="quick-action-icon" style={{ background: 'var(--orange-100)', color: 'var(--orange-600)' }}>🔄</div>
             <div>

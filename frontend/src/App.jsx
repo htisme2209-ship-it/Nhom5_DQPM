@@ -15,6 +15,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import TaiKhoanPage from './pages/admin/TaiKhoanPage';
 import HaTangPage from './pages/admin/HaTangPage';
 import NhatKyPage from './pages/admin/NhatKyPage';
+import QuyTacHethongPage from './pages/admin/QuyTacHethongPage';
 
 // Nhà ga pages
 import NhaGaDashboard from './pages/nhaga/NhaGaDashboard';
@@ -71,7 +72,7 @@ function AppRoutes() {
         <Route path="tai-khoan" element={<TaiKhoanPage />} />
         <Route path="ha-tang" element={<HaTangPage />} />
         <Route path="nhat-ky" element={<NhatKyPage />} />
-        <Route path="quy-tac" element={<PlaceholderPage title="Quy tắc Nghiệp vụ" description="Cấu hình ràng buộc vận hành và khoảng cách an toàn" />} />
+        <Route path="quy-tac-he-thong" element={<QuyTacHethongPage />} />
       </Route>
 
       {/* ===== Nhà ga routes ===== */}

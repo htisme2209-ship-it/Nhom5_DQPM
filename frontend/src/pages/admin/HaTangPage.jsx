@@ -66,11 +66,6 @@ export default function HaTangPage() {
     const gaDau = gaList.find(g => g.maGa === tuyen.maGaDau);
     const gaCuoi = gaList.find(g => g.maGa === tuyen.maGaCuoi);
 
-    console.log('Tuyến:', tuyen.tenTuyen);
-    console.log('Ga đầu:', gaDau?.tenGa, '- Mã:', gaDau?.maGa);
-    console.log('Ga cuối:', gaCuoi?.tenGa, '- Mã:', gaCuoi?.maGa);
-
-    // Kiểm tra cả mã ga và tên ga (case-insensitive)
     const isDaNangStart =
       gaDau?.maGa === 'GA-DN' ||
       gaDau?.tenGa?.toLowerCase().includes('đà nẵng') ||
@@ -81,9 +76,6 @@ export default function HaTangPage() {
       gaCuoi?.tenGa?.toLowerCase().includes('đà nẵng') ||
       gaCuoi?.tenGa?.toLowerCase().includes('da nang');
 
-    console.log('isDaNangStart:', isDaNangStart);
-    console.log('isDaNangEnd:', isDaNangEnd);
-
     let vaiTro;
     if (isDaNangStart && !isDaNangEnd) {
       vaiTro = 'XUAT_PHAT';
@@ -93,26 +85,42 @@ export default function HaTangPage() {
       vaiTro = 'TRUNG_GIAN';
     }
 
-    console.log('Vai trò xác định:', vaiTro);
     return vaiTro;
+  };
+
+  const getDateConstraints = () => {
+    const today = new Date();
+    const minDate = new Date(today);
+    minDate.setMonth(minDate.getMonth() + 1);
+    
+    return {
+      minDate: minDate.toISOString().split('T')[0],
+      maxDate: ''
+    };
+  };
+
+  const isDateWithinRange = (dateString) => {
+    if (!dateString) return true;
+    const selectedDate = new Date(dateString);
+    const today = new Date();
+    const minDate = new Date(today);
+    minDate.setMonth(minDate.getMonth() + 1);
+    
+    return selectedDate >= minDate;
   };
 
   const handleTuyenChange = (maTuyen) => {
     const vaiTro = calculateVaiTroTaiDaNang(maTuyen);
-
-    // Tự động set NULL cho các trường không cần thiết dựa trên vai trò
     const updatedForm = {
       ...form,
       maTuyen,
       vaiTroTaiDaNang: vaiTro
     };
 
-    // Nếu là tàu xuất phát, giờ đến = NULL
     if (vaiTro === 'XUAT_PHAT') {
       updatedForm.gioDenDuKien = null;
     }
 
-    // Nếu là tàu điểm cuối, giờ đi = NULL
     if (vaiTro === 'DIEM_CUOI') {
       updatedForm.gioDiDuKien = null;
     }
@@ -400,7 +408,7 @@ export default function HaTangPage() {
         onClose={() => setShowForm(false)}
         title={editItem ? 'Chỉnh sửa Tuyến' : 'Thêm Tuyến Mới'}
         subtitle="Cấu hình tuyến đường"
-        size="md"
+        size="lg"
       >
         <div className="form-row">
           <div className="form-group">
@@ -455,6 +463,71 @@ export default function HaTangPage() {
             </select>
           </div>
         </div>
+
+        {/* Intermediate Stations Section */}
+        <div className="form-group">
+          <label className="form-label">CÁC GA GIỮA (Tùy chọn)</label>
+          <div style={{ background: 'var(--gray-50)', padding: '15px', borderRadius: '6px', marginBottom: '10px' }}>
+            {form.gaGiua && form.gaGiua.length > 0 ? (
+              <div>
+                {form.gaGiua.map((maGa, idx) => {
+                  const gaName = gaList.find(g => g.maGa === maGa)?.tenGa || maGa;
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', background: 'white', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--gray-200)' }}>
+                      <span style={{ flex: 1 }}>🚩 {gaName}</span>
+                      <button
+                        type="button"
+                        onClick={() => setForm({
+                          ...form,
+                          gaGiua: form.gaGiua.filter((_, i) => i !== idx)
+                        })}
+                        style={{
+                          background: 'var(--red-100)',
+                          border: 'none',
+                          color: 'var(--red-700)',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✕ Xóa
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-muted" style={{ margin: '0', fontSize: '13px' }}>Chưa có ga giữa nào</p>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <select
+              className="form-control"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value && (!form.gaGiua || !form.gaGiua.includes(e.target.value))) {
+                  const newGaGiua = form.gaGiua ? [...form.gaGiua, e.target.value] : [e.target.value];
+                  setForm({ ...form, gaGiua: newGaGiua });
+                  e.target.value = '';
+                }
+              }}
+              style={{ flex: 1 }}
+            >
+              <option value="">+ Thêm ga giữa</option>
+              {gaList
+                .filter(ga => ga.maGa !== form.maGaDau && ga.maGa !== form.maGaCuoi && (!form.gaGiua || !form.gaGiua.includes(ga.maGa)))
+                .map(ga => (
+                  <option key={ga.maGa} value={ga.maGa}>
+                    {ga.tenGa}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
+
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">KHOẢNG CÁCH (KM)</label>
@@ -514,11 +587,13 @@ export default function HaTangPage() {
               onChange={(e) => setForm({ ...form, maTau: e.target.value })}
             >
               <option value="">Chọn tàu</option>
-              {tau.map(t => (
-                <option key={t.maTau} value={t.maTau}>
-                  {t.tenTau}
-                </option>
-              ))}
+              {tau
+                .filter(t => t.trangThai === 'HOAT_DONG' || t.maTau === form.maTau)
+                .map(t => (
+                  <option key={t.maTau} value={t.maTau}>
+                    {t.tenTau} {t.trangThai !== 'HOAT_DONG' ? '(Đang bảo trì/Ngừng)' : ''}
+                  </option>
+                ))}
             </select>
           </div>
         </div>
@@ -591,13 +666,31 @@ export default function HaTangPage() {
         </div>
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">NGÀY CHẠY</label>
+            <label className="form-label">
+              NGÀY CHẠY
+              <span style={{ color: 'var(--red-600)', marginLeft: '4px' }}>*</span>
+              <span style={{ color: 'var(--gray-500)', fontSize: '11px', display: 'block', marginTop: '4px' }}>
+                (Tối đa 1 tháng từ hôm nay)
+              </span>
+            </label>
             <input
               type="date"
               className="form-control"
               value={form.ngayChay}
+              min={getDateConstraints().minDate}
+              max={getDateConstraints().maxDate}
               onChange={(e) => setForm({ ...form, ngayChay: e.target.value })}
+              style={
+                form.ngayChay && !isDateWithinRange(form.ngayChay)
+                  ? { borderColor: 'var(--red-600)', borderWidth: '2px' }
+                  : {}
+              }
             />
+            {form.ngayChay && !isDateWithinRange(form.ngayChay) && (
+              <small style={{ color: 'var(--red-600)', marginTop: '4px', display: 'block' }}>
+                ⚠️ Ngày chạy phải trong vòng 1 tháng kể từ hôm nay
+              </small>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">TRẠNG THÁI</label>
@@ -615,7 +708,17 @@ export default function HaTangPage() {
           <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
             Hủy
           </button>
-          <button className="btn btn-primary" onClick={() => handleSave('chuyen-tau')} disabled={formLoading}>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              if (tab === 'chuyen-tau' && form.ngayChay && !isDateWithinRange(form.ngayChay)) {
+                showError('Ngày chạy phải trong vòng 1 tháng kể từ hôm nay');
+                return;
+              }
+              handleSave(tab);
+            }} 
+            disabled={formLoading || (tab === 'chuyen-tau' && form.ngayChay && !isDateWithinRange(form.ngayChay))}
+          >
             {formLoading ? '⏳' : '🔒 Lưu'}
           </button>
         </div>
