@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { keHoachAPI, chiDaoAPI, lichTrinhAPI } from '../../services/api';
+import { useNavigate } from 'react-router-dom'; // Thêm thư viện chuyển trang
 
 export default function QuanLyDashboard() {
+  const navigate = useNavigate(); // Khởi tạo biến chuyển trang
   const [keHoach, setKeHoach] = useState([]);
   const [chiDao, setChiDao] = useState([]);
   const [stats, setStats] = useState({});
@@ -19,7 +21,11 @@ export default function QuanLyDashboard() {
       const kh = khRes.data.data || [];
       const cd = cdRes.data.data || [];
       const lt = ltRes.data.data || [];
-      setKeHoach(kh);
+      
+      // Lọc kế hoạch mới nhất lên đầu và chỉ lấy 5 cái cho gọn Dashboard
+      const sortedKh = kh.sort((a, b) => new Date(b.ngayGui) - new Date(a.ngayGui));
+      setKeHoach(sortedKh.slice(0, 5)); 
+      
       setChiDao(cd);
       setStats({
         tongChuyen: lt.length,
@@ -47,8 +53,8 @@ export default function QuanLyDashboard() {
             <p>Giám sát toàn diện hoạt động Ga Đà Nẵng</p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-secondary">📊 Xuất báo cáo</button>
-            <button className="btn btn-primary">📝 Gửi chỉ đạo</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/quan-ly/bao-cao')}>📊 Xuất báo cáo</button>
+            <button className="btn btn-primary" onClick={() => navigate('/quan-ly/chi-dao')}>📝 Gửi chỉ đạo</button>
           </div>
         </div>
       </div>
@@ -68,14 +74,14 @@ export default function QuanLyDashboard() {
           </div>
           <div className="stat-icon">✅</div>
         </div>
-        <div className="stat-card orange">
+        <div className="stat-card orange" style={{ cursor: 'pointer' }} onClick={() => navigate('/quan-ly/phe-duyet')}>
           <div className="stat-info">
             <div className="stat-label">Chờ phê duyệt</div>
             <div className="stat-value">{stats.choDuyet}</div>
           </div>
           <div className="stat-icon">📋</div>
         </div>
-        <div className="stat-card navy">
+        <div className="stat-card navy" style={{ cursor: 'pointer' }} onClick={() => navigate('/quan-ly/chi-thi')}>
           <div className="stat-info">
             <div className="stat-label">Chỉ đạo đã gửi</div>
             <div className="stat-value">{stats.chiDaoGui}</div>
@@ -89,7 +95,7 @@ export default function QuanLyDashboard() {
           <div className="card">
             <div className="card-header">
               <h3>📋 Kế hoạch chờ phê duyệt</h3>
-              <button className="btn btn-secondary btn-sm">Xem tất cả</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => navigate('/quan-ly/phe-duyet')}>Xem tất cả ➔</button>
             </div>
             <div className="table-container">
               <table>
@@ -114,16 +120,22 @@ export default function QuanLyDashboard() {
                         <td><span className={`badge ${kh.mucDoUuTien === 'KHAN_CAP' ? 'badge-danger' : kh.mucDoUuTien === 'CAO' ? 'badge-warning' : 'badge-info'}`}>{kh.mucDoUuTien}</span></td>
                         <td><span className={`badge ${tt.cls}`}>{tt.label}</span></td>
                         <td>
-                          {kh.trangThai === 'CHO_PHE_DUYET' && (
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              <button className="btn btn-success btn-sm">✅ Duyệt</button>
-                              <button className="btn btn-danger btn-sm">❌ Từ chối</button>
-                            </div>
+                          {kh.trangThai === 'CHO_PHE_DUYET' ? (
+                            <span className="text-muted text-sm">Chờ phê duyệt</span>
+                          ) : (
+                            <span className="text-muted text-sm">Đã xử lý</span>
                           )}
                         </td>
                       </tr>
                     );
                   })}
+                  {keHoach.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="text-center text-muted" style={{ padding: '20px' }}>
+                        Không có kế hoạch nào gần đây.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -148,15 +160,20 @@ export default function QuanLyDashboard() {
                 <div key={cd.maChiDao} style={{
                   padding: '16px 20px', borderBottom: '1px solid var(--gray-100)',
                   cursor: 'pointer', transition: 'var(--transition)'
-                }}>
+                }} onClick={() => navigate('/quan-ly/chi-thi')}>
                   <div className="flex-between" style={{ marginBottom: '4px' }}>
                     <span className={`badge ${cd.mucDoUuTien === 'KHAN_CAP' ? 'badge-danger' : 'badge-info'}`}>{cd.mucDoUuTien === 'KHAN_CAP' ? '🔴 KHẨN CẤP' : '🔵 ' + cd.mucDoUuTien}</span>
-                    <span className="text-xs text-muted">{cd.trangThai}</span>
+                    <span className="text-xs text-muted">{cd.trangThai === 'DA_DOC' ? 'Đã xem' : 'Đã gửi'}</span>
                   </div>
                   <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--navy-800)', margin: '4px 0' }}>{cd.tieuDe}</h4>
                   <p className="text-sm text-muted" style={{ lineHeight: 1.4 }}>{cd.noiDung.substring(0, 100)}...</p>
                 </div>
               ))}
+              {chiDao.length === 0 && (
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--gray-500)' }}>
+                  Chưa có chỉ đạo nào.
+                </div>
+              )}
             </div>
           </div>
         </div>

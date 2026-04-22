@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { lichTrinhAPI, suCoAPI, chuyenTauAPI } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function BaoCaoPage() {
+  const navigate = useNavigate();
   const [lichTrinh, setLichTrinh] = useState([]);
   const [suCo, setSuCo] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -9,6 +11,9 @@ export default function BaoCaoPage() {
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0]
   });
+  const currentYear = new Date().getFullYear();
+  const [selectedYears, setSelectedYears] = useState([currentYear]);
+  const [availableYears, setAvailableYears] = useState([]);
 
   useEffect(() => { loadData(); }, [dateRange]);
 
@@ -19,9 +24,24 @@ export default function BaoCaoPage() {
         lichTrinhAPI.getAll({}),
         suCoAPI.getAll()
       ]);
-      setLichTrinh(ltRes.data.data || ltRes.data || []);
+      const ltData = ltRes.data.data || ltRes.data || [];
+      setLichTrinh(ltData);
       setSuCo(scRes.data.data || scRes.data || []);
-    } catch (e) { console.error(e); }
+
+      // Extract available years from data
+      const years = new Set();
+      ltData.forEach(lt => {
+        if (lt.ngayDuKien) {
+          const year = new Date(lt.ngayDuKien).getFullYear();
+          years.add(year);
+        }
+      });
+      const sortedYears = Array.from(years).sort((a, b) => b - a);
+      setAvailableYears(sortedYears.length > 0 ? sortedYears : [currentYear]);
+    } catch (e) { 
+      console.error(e); 
+      setAvailableYears([currentYear]);
+    }
     finally { setLoading(false); }
   };
 
@@ -54,12 +74,7 @@ export default function BaoCaoPage() {
             <p>Phân tích hiệu suất vận hành Ga Đà Nẵng</p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input type="date" className="form-control" style={{ width: 'auto' }}
-              value={dateRange.from} onChange={(e) => setDateRange({...dateRange, from: e.target.value})} />
-            <span className="flex-center text-muted">→</span>
-            <input type="date" className="form-control" style={{ width: 'auto' }}
-              value={dateRange.to} onChange={(e) => setDateRange({...dateRange, to: e.target.value})} />
-            <button className="btn btn-secondary">📥 Xuất báo cáo</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/quan-ly/xuat-bao-cao')}>📥 Xuất báo cáo</button>
           </div>
         </div>
       </div>
