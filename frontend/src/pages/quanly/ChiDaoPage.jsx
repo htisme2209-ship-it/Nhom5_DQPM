@@ -23,7 +23,9 @@ export default function ChiDaoPage() {
     setLoading(true);
     try {
       const [cdRes, nvRes] = await Promise.all([chiDaoAPI.getAll(), taiKhoanAPI.getAll()]);
-      setChiDao(cdRes.data.data || cdRes.data || []);
+      // Sắp xếp chỉ đạo mới nhất lên đầu
+      const sortedCd = (cdRes.data.data || cdRes.data || []).sort((a, b) => new Date(b.ngayTao || 0) - new Date(a.ngayTao || 0));
+      setChiDao(sortedCd);
       setNhanVien(nvRes.data.data || nvRes.data || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -72,106 +74,185 @@ export default function ChiDaoPage() {
     <>
       {toast && <div className="toast-container"><div className={`toast ${toast.type}`}>{toast.type === 'success' ? '✅' : '❌'} {toast.msg}</div></div>}
 
-      <div className="page-header">
+      {/* Header gọn gàng, hiện đại */}
+      <div className="page-header" style={{ borderBottom: '1px solid var(--gray-200)', paddingBottom: '24px', marginBottom: '24px' }}>
         <div className="page-header-actions">
           <div>
-            <h1>{isManager ? 'Gửi Chỉ đạo Vận hành' : 'Chỉ đạo & Thông báo'}</h1>
-            <p>{isManager ? 'Gửi chỉ đạo vận hành đến nhân viên' : 'Nhận và thực hiện chỉ đạo từ Ban Quản lý'}</p>
+            <h1 style={{ fontSize: '24px', color: 'var(--navy-900)' }}>
+              {isManager ? '📨 Ban hành Chỉ đạo' : '📬 Hộp thư Chỉ đạo'}
+            </h1>
+            <p style={{ color: 'var(--gray-500)', marginTop: '4px' }}>
+              {isManager ? 'Gửi và theo dõi các chỉ đạo vận hành đến nhân sự' : 'Nhận và xác nhận các yêu cầu điều hành từ Ban Quản lý'}
+            </p>
           </div>
-          {isManager && <button className="btn btn-primary" onClick={openCreate}>📨 Gửi chỉ đạo mới</button>}
+          {isManager && (
+            <button className="btn btn-primary" style={{ padding: '10px 20px', fontWeight: 600 }} onClick={openCreate}>
+              + Tạo Chỉ đạo Mới
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <div className="stat-card blue">
-          <div className="stat-info"><div className="stat-label">Tổng chỉ đạo</div><div className="stat-value">{myDirectives.length}</div></div>
-          <div className="stat-icon">📨</div>
+      {/* Stats Grid - Thêm hiệu ứng màu sắc */}
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '24px' }}>
+        <div className="stat-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+          <div className="stat-info">
+            <div className="stat-label" style={{ color: '#64748b' }}>Tổng số hộp thư</div>
+            <div className="stat-value" style={{ color: '#0f172a' }}>{myDirectives.length}</div>
+          </div>
+          <div className="stat-icon" style={{ background: '#e2e8f0' }}>📁</div>
         </div>
-        <div className="stat-card orange">
-          <div className="stat-info"><div className="stat-label">Chưa đọc</div><div className="stat-value">{myDirectives.filter(c => c.trangThai === 'CHUA_DOC').length}</div></div>
-          <div className="stat-icon">📬</div>
+        <div className="stat-card" style={{ background: '#fffbeb', border: '1px solid #fef08a' }}>
+          <div className="stat-info">
+            <div className="stat-label" style={{ color: '#b45309' }}>Chưa xử lý / Mới</div>
+            <div className="stat-value" style={{ color: '#78350f' }}>{myDirectives.filter(c => c.trangThai === 'CHUA_DOC').length}</div>
+          </div>
+          <div className="stat-icon" style={{ background: '#fde68a' }}>🔥</div>
         </div>
-        <div className="stat-card green">
-          <div className="stat-info"><div className="stat-label">Đã thực hiện</div><div className="stat-value">{myDirectives.filter(c => c.trangThai === 'DA_DOC').length}</div></div>
-          <div className="stat-icon">✅</div>
+        <div className="stat-card" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <div className="stat-info">
+            <div className="stat-label" style={{ color: '#15803d' }}>Đã hoàn tất</div>
+            <div className="stat-value" style={{ color: '#14532d' }}>{myDirectives.filter(c => c.trangThai === 'DA_DOC').length}</div>
+          </div>
+          <div className="stat-icon" style={{ background: '#bbf7d0' }}>✅</div>
         </div>
       </div>
 
-      <div className="card">
+      {/* Main Inbox Container */}
+      <div className="card" style={{ boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div className="card-header" style={{ borderBottom: '1px solid var(--gray-100)', padding: '20px' }}>
+          <h3 style={{ fontSize: '16px', color: 'var(--navy-800)' }}>Lịch sử giao tiếp</h3>
+        </div>
+        
         <div className="card-body" style={{ padding: 0 }}>
           {myDirectives.length === 0 ? (
-            <div className="text-center text-muted" style={{ padding: '60px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '8px' }}>📭</div>
-              Không có chỉ đạo nào
+            <div className="text-center text-muted" style={{ padding: '80px 20px' }}>
+              <div style={{ fontSize: '60px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
+              <h3 style={{ fontSize: '18px', color: 'var(--gray-700)', marginBottom: '8px' }}>Hộp thư trống</h3>
+              <p style={{ fontSize: '14px' }}>Chưa có chỉ đạo hay thông báo nào được lưu trữ tại đây.</p>
             </div>
           ) : myDirectives.map(cd => (
+            
+            // Từng Item Tin nhắn (Inbox Style)
             <div key={cd.maChiDao} style={{
-              padding: '20px', borderBottom: '1px solid var(--gray-100)',
-              background: cd.trangThai === 'CHUA_DOC' ? 'var(--navy-50)' : 'var(--white)',
-              cursor: 'pointer', transition: 'var(--transition)'
+              padding: '24px', borderBottom: '1px solid var(--gray-100)',
+              background: cd.trangThai === 'CHUA_DOC' ? '#f8fafc' : '#ffffff', // Highlight tin chưa đọc
+              display: 'flex', gap: '20px', alignItems: 'flex-start',
+              transition: 'all 0.2s ease',
+              borderLeft: cd.trangThai === 'CHUA_DOC' ? '4px solid var(--primary)' : '4px solid transparent'
             }}>
-              <div className="flex-between" style={{ marginBottom: '8px' }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span className={`badge ${cd.mucDoUuTien === 'KHAN_CAP' ? 'badge-danger' : cd.mucDoUuTien === 'CAO' ? 'badge-warning' : 'badge-info'}`}>
-                    {cd.mucDoUuTien === 'KHAN_CAP' ? '🔴 KHẨN CẤP' : cd.mucDoUuTien}
-                  </span>
-                  {cd.trangThai === 'CHUA_DOC' && <span className="badge badge-navy">MỚI</span>}
-                </div>
-                <span className="text-xs text-muted">{cd.maChiDao} • {cd.ngayTao ? new Date(cd.ngayTao).toLocaleString('vi-VN') : ''}</span>
+              
+              {/* Avatar Icon */}
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
+                background: cd.trangThai === 'CHUA_DOC' ? 'var(--blue-100)' : 'var(--gray-100)'
+              }}>
+                {cd.mucDoUuTien === 'KHAN_CAP' ? '🚨' : cd.mucDoUuTien === 'CAO' ? '⚡' : '✉️'}
               </div>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--navy-800)', marginBottom: '6px' }}>{cd.tieuDe}</h4>
-              <p className="text-sm" style={{ color: 'var(--gray-600)', lineHeight: 1.6 }}>{cd.noiDung}</p>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <span className="text-xs text-muted">
-                  {isManager ? `→ Gửi đến: ${cd.maNguoiNhan}` : `← Từ: ${cd.maNguoiGui}`}
-                </span>
-                {!isManager && cd.trangThai === 'CHUA_DOC' && (
-                  <button className="btn btn-success btn-sm" onClick={() => handleMarkRead(cd)}>✅ Đã xem</button>
-                )}
+
+              {/* Message Content */}
+              <div style={{ flex: 1 }}>
+                <div className="flex-between" style={{ marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <h4 style={{ fontSize: '16px', fontWeight: cd.trangThai === 'CHUA_DOC' ? 700 : 600, color: 'var(--navy-900)', margin: 0 }}>
+                      {cd.tieuDe}
+                    </h4>
+                    {cd.trangThai === 'CHUA_DOC' && <span className="badge badge-navy" style={{ fontSize: '11px', padding: '4px 8px' }}>MỚI</span>}
+                    <span className={`badge ${cd.mucDoUuTien === 'KHAN_CAP' ? 'badge-danger' : cd.mucDoUuTien === 'CAO' ? 'badge-warning' : 'badge-gray'}`} style={{ fontSize: '11px' }}>
+                      {cd.mucDoUuTien === 'KHAN_CAP' ? 'KHẨN CẤP' : cd.mucDoUuTien}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted" style={{ fontWeight: 500 }}>
+                    {cd.ngayTao ? new Date(cd.ngayTao).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
+                  </span>
+                </div>
+
+                <div style={{ 
+                  background: cd.trangThai === 'CHUA_DOC' ? '#ffffff' : '#f8fafc',
+                  border: '1px solid var(--gray-200)', borderRadius: '8px', 
+                  padding: '16px', marginTop: '12px', marginBottom: '16px'
+                }}>
+                  <p className="text-sm" style={{ color: 'var(--gray-800)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {cd.noiDung}
+                  </p>
+                </div>
+
+                <div className="flex-between" style={{ alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '4px 12px', borderRadius: '100px' }}>
+                      {isManager ? `📤 Gửi đến: ${cd.maNguoiNhan}` : `📥 Từ: Ban Quản lý (${cd.maNguoiGui})`}
+                    </span>
+                    <span style={{ fontSize: '13px', color: 'var(--gray-400)' }}>
+                      Mã: {cd.maChiDao}
+                    </span>
+                  </div>
+
+                  {/* Nút xác nhận dành cho Nhân viên */}
+                  {!isManager && cd.trangThai === 'CHUA_DOC' && (
+                    <button 
+                      className="btn btn-success" 
+                      style={{ padding: '6px 16px', fontSize: '13px', fontWeight: 600, boxShadow: '0 2px 4px rgba(34,197,94,0.2)' }} 
+                      onClick={() => handleMarkRead(cd)}
+                    >
+                      ✓ Đánh dấu đã nhận & xử lý
+                    </button>
+                  )}
+                  {cd.trangThai === 'DA_DOC' && (
+                    <span style={{ fontSize: '13px', color: 'var(--green-600)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '16px' }}>✓</span> Đã xử lý
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Create Modal */}
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Gửi Chỉ đạo Vận hành" subtitle="Gửi chỉ đạo đến nhân viên" size="md">
+      {/* Create Modal - Thiết kế lại chuyên nghiệp hơn */}
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Soạn Chỉ đạo Mới" size="md">
+        <div style={{ background: 'var(--blue-50)', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--blue-100)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--blue-800)', margin: 0 }}>
+            💡 <strong>Lưu ý:</strong> Chỉ đạo sẽ được gửi ngay lập tức đến ứng dụng của nhân viên. Hãy đánh dấu "Khẩn cấp" đối với các sự cố liên quan đến an toàn đường ray.
+          </p>
+        </div>
+
         <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">NGƯỜI NHẬN</label>
-            <select className="form-control" value={form.maNguoiNhan}
-              onChange={(e) => setForm({...form, maNguoiNhan: e.target.value})}>
-              <option value="">Chọn nhân viên...</option>
+          <div className="form-group" style={{ flex: 2 }}>
+            <label className="form-label" style={{ fontWeight: 600, color: 'var(--navy-800)' }}>NGƯỜI NHẬN <span style={{color: 'red'}}>*</span></label>
+            <select className="form-control" style={{ border: '1px solid var(--gray-300)' }} value={form.maNguoiNhan} onChange={(e) => setForm({...form, maNguoiNhan: e.target.value})}>
+              <option value="">-- Chọn nhân viên tiếp nhận --</option>
               {nhanVien.filter(nv => nv.maTaiKhoan !== user?.maTaiKhoan).map(nv => (
-                <option key={nv.maTaiKhoan} value={nv.maTaiKhoan}>{nv.hoTen} ({nv.quyenTruyCap})</option>
+                <option key={nv.maTaiKhoan} value={nv.maTaiKhoan}>{nv.hoTen} - {nv.quyenTruyCap}</option>
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label className="form-label">MỨC ĐỘ ƯU TIÊN</label>
-            <select className="form-control" value={form.mucDoUuTien}
-              onChange={(e) => setForm({...form, mucDoUuTien: e.target.value})}>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label className="form-label" style={{ fontWeight: 600, color: 'var(--navy-800)' }}>MỨC ƯU TIÊN</label>
+            <select className="form-control" style={{ border: '1px solid var(--gray-300)' }} value={form.mucDoUuTien} onChange={(e) => setForm({...form, mucDoUuTien: e.target.value})}>
               <option value="THAP">Thấp</option>
               <option value="TRUNG_BINH">Trung bình</option>
               <option value="CAO">Cao</option>
-              <option value="KHAN_CAP">Khẩn cấp</option>
+              <option value="KHAN_CAP">🔴 Khẩn cấp</option>
             </select>
           </div>
         </div>
+        
         <div className="form-group">
-          <label className="form-label">TIÊU ĐỀ</label>
-          <input className="form-control" placeholder="Tiêu đề chỉ đạo..." value={form.tieuDe}
-            onChange={(e) => setForm({...form, tieuDe: e.target.value})} />
+          <label className="form-label" style={{ fontWeight: 600, color: 'var(--navy-800)' }}>TIÊU ĐỀ <span style={{color: 'red'}}>*</span></label>
+          <input className="form-control" style={{ border: '1px solid var(--gray-300)', fontWeight: 500 }} placeholder="Nhập tiêu đề ngắn gọn, dễ hiểu..." value={form.tieuDe} onChange={(e) => setForm({...form, tieuDe: e.target.value})} />
         </div>
+        
         <div className="form-group">
-          <label className="form-label">NỘI DUNG</label>
-          <textarea className="form-control" rows="5" placeholder="Nội dung chỉ đạo chi tiết..."
-            value={form.noiDung} onChange={(e) => setForm({...form, noiDung: e.target.value})} />
+          <label className="form-label" style={{ fontWeight: 600, color: 'var(--navy-800)' }}>NỘI DUNG CHỈ ĐẠO CHI TIẾT <span style={{color: 'red'}}>*</span></label>
+          <textarea className="form-control" rows="6" style={{ border: '1px solid var(--gray-300)', lineHeight: 1.6 }} placeholder="Nhập chi tiết các công việc, yêu cầu cần thực hiện..." value={form.noiDung} onChange={(e) => setForm({...form, noiDung: e.target.value})} />
         </div>
-        <div className="modal-footer" style={{ padding: '16px 0 0', borderTop: '1px solid var(--gray-200)' }}>
-          <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Hủy</button>
-          <button className="btn btn-primary" onClick={handleCreate} disabled={formLoading}>
-            {formLoading ? '⏳' : '📤 Gửi chỉ đạo'}
+        
+        <div className="modal-footer" style={{ padding: '20px 0 0', borderTop: '1px solid var(--gray-200)', marginTop: '24px' }}>
+          <button className="btn btn-secondary" style={{ padding: '10px 24px' }} onClick={() => setShowForm(false)}>Hủy bỏ</button>
+          <button className="btn btn-primary" style={{ padding: '10px 24px', fontWeight: 600 }} onClick={handleCreate} disabled={formLoading}>
+            {formLoading ? 'Đang gửi...' : '📤 Gửi Chỉ đạo'}
           </button>
         </div>
       </Modal>
